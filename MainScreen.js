@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const MainPage = ({ navigation }) => {
+const MainScreen = ({ navigation }) => {
   const menuItems = [
     { title: 'BUY', icon: 'shopping-cart', color: '#4CAF50', action: () => navigation.navigate('BuyScreen') },
     // Add other menu items here as needed
@@ -66,4 +66,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MainPage;
+export default MainScreen;
