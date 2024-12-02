@@ -11,8 +11,9 @@ import {
   Button,
 } from "react-native";
 
+// Custom Keyboard Component
 const CustomKeyboard = ({ onKeyPress }) => {
-  const rows = [
+  const keys = [
     ["1", "2", "3", "⌫"],
     ["4", "5", "6", "D"],
     ["7", "8", "9", "OK"],
@@ -21,7 +22,7 @@ const CustomKeyboard = ({ onKeyPress }) => {
 
   return (
     <View style={styles.keyboard}>
-      {rows.map((row, rowIndex) => (
+      {keys.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.row}>
           {row.map((key) => (
             <TouchableOpacity
@@ -38,6 +39,7 @@ const CustomKeyboard = ({ onKeyPress }) => {
   );
 };
 
+// Main BuyScreen Component
 const BuyScreen = () => {
   const [textFields, setTextFields] = useState([{ id: 1, value: "" }]);
   const [activeField, setActiveField] = useState(1);
@@ -49,125 +51,134 @@ const BuyScreen = () => {
 
   // Toggle caret visibility
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCaretVisible((prev) => !prev);
-    }, 500); // Blinks every 500ms
-    return () => clearInterval(interval); // Cleanup on unmount
+    const interval = setInterval(() => setCaretVisible((prev) => !prev), 500);
+    return () => clearInterval(interval);
   }, []);
 
-  // Handle key presses
+  // Handlers for KeyPress
   const handleKeyPress = (key) => {
-    if (key === "↵") {
-      setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
-      setActiveField(textFields.length + 1);
-    } else if (key === "⌫") {
-      setTextFields((prev) =>
-        prev.map((field) =>
-          field.id === activeField
-            ? { ...field, value: field.value.slice(0, -1) }
-            : field
-        )
-      );
-    } else if (key === "OK") {
-      setModalVisible(true); // Show the modal for ticket number
-    } else {
-      setTextFields((prev) =>
-        prev.map((field) =>
-          field.id === activeField
-            ? { ...field, value: field.value + key }
-            : field
-        )
-      );
-    }
+    if (key === "↵") addNewField();
+    else if (key === "⌫") deleteLastCharacter();
+    else if (key === "OK") setModalVisible(true);
+    else appendCharacter(key);
   };
 
-  // Handle field focus
-  const handleFocus = (id) => {
-    setActiveField(id);
+  const addNewField = () => {
+    setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
+    setActiveField(textFields.length + 1);
   };
 
-  // Handle submit
+  const deleteLastCharacter = () => {
+    setTextFields((prev) =>
+      prev.map((field) =>
+        field.id === activeField
+          ? { ...field, value: field.value.slice(0, -1) }
+          : field
+      )
+    );
+  };
+
+  const appendCharacter = (key) => {
+    setTextFields((prev) =>
+      prev.map((field) =>
+        field.id === activeField ? { ...field, value: field.value + key } : field
+      )
+    );
+  };
+
+  const handleFieldFocus = (id) => setActiveField(id);
+
   const handleSubmit = () => {
+    const formattedData = formatData();
+    const totalPrice = calculateTotalPrice();
+
+    Alert.alert(
+      "Output",
+      generateOutputMessage(formattedData, totalPrice)
+    );
+  };
+
+  const formatData = () => {
     const mapping = { 1: "M", 2: "K", 3: "T", 4: "S", 8: "G", 9: "E" };
   
-    const formattedData = textFields
+    return textFields
       .map((field) => {
         const input = field.value;
   
         if (input.includes("#")) {
-          const parts = input.split("#");
-          const base = parts[0];
+          const [base, ...parts] = input.split("#");
+          const cleanedBase = base.replace("**", ""); // Remove "**"
   
-          // Dynamically generate suffixes based on user input
-          const mappedSuffixes = parts
-            .slice(1) // Ignore the base part
-            .map((value, index) => {
-              const suffixLabel = ["B", "S", "A", "C"][index] || ""; // Get label dynamically
-              return suffixLabel ? `${suffixLabel}${value}` : ""; // Combine label with user input
-            })
-            .filter((suffix) => suffix !== "") // Remove empty suffixes
-            .join("-");
-  
-          return `${base} ${mappedSuffixes}`;
-        } else {
-          return input
-            .split("")
-            .map((char) => (mapping[char] ? `${mapping[char]}` : char))
-            .join("");
+          if (base.length === 4) {
+            // 4-digit validation
+            return input.includes("**#")
+              ? `${cleanedBase} ${mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])}`
+              : `${cleanedBase} ${mapSuffixes(parts, ["B", "S", "A", "C"])}`;
+          } else if (base.length === 3) {
+            // 3-digit validation
+            return input.includes("**#")
+              ? `${cleanedBase} ${mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])}`
+              : `${cleanedBase} ${mapSuffixes(parts, ["A", "C"])}`;
+          }
         }
+  
+        return mapCharacters(input, mapping); // Default character mapping
       })
       .join("\n");
+  };
   
-    // Calculate totalPrice
-    const totalPrice = textFields.reduce((total, field) => {
+  // Utility to map suffixes to parts
+  const mapSuffixes = (values, labels) =>
+    values
+      .map((value, index) => (labels[index] ? `${labels[index]}${value}` : ""))
+      .filter(Boolean)
+      .join("-");
+  
+
+  const mapCharacters = (input, mapping) =>
+    input
+      .split("")
+      .map((char) => mapping[char] || char)
+      .join("");
+
+  const calculateTotalPrice = () => {
+    return textFields.reduce((total, field) => {
       const input = field.value;
-  
+
       if (input.includes("#")) {
-        const parts = input.split("#").slice(1); // Extract values after the base part
-        const sumOfNumbers = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
-  
-        // Find another field without # to use its digit count
-        const multiplierField = textFields.find((f) => !f.value.includes("#"));
-        const multiplier = multiplierField ? multiplierField.value.length : 1;
-  
-        return total + sumOfNumbers * multiplier;
-      } else {
-        return total; // No # means no addition to total
+        const [, ...parts] = input.split("#");
+        const sum = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
+
+        const multiplier = textFields.find((f) => !f.value.includes("#"))
+          ?.value.length || 1;
+
+        return total + sum * multiplier;
       }
+
+      return total;
     }, 0);
-  
+  };
+
+  const generateOutputMessage = (formattedData, totalPrice) => {
     const currentDate = new Date();
-    const formattedDate =
-      `${currentDate.getDate().toString().padStart(2, "0")}/` +
-      `${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/` +
-      `99 ${currentDate.getHours().toString().padStart(2, "0")}:` +
-      `${currentDate.getMinutes().toString().padStart(2, "0")}:` +
-      `${currentDate.getSeconds().toString().padStart(2, "0")}`;
-  
-    const AppName = "(PP)";
-    const userName = "SG0003";
-    const specialChar = "*BSAC4A 1*1";
-    const buyDate = "30/11";
-  
-    Alert.alert(
-      "Output",
-      `${AppName}\n` +
-        `B${formattedDate}\n` +
-        `${userName}#${ticketNumber}\n` +
-        `${specialChar}\n` +
-        `${buyDate}\n` +
-        `${formattedData}\n` +
-        `T = ${totalPrice}\n` +
-        `NT = ${totalPrice}\n` +
-        `${ticketNumber2} PP\n` +
-        `Free 6D GD\n` +
-        `${buyDate}\n` +
-        `${SixDGD}\n` +
-        `Sila semak resit.\n` +
-        `Bayaran ikut resit.\n`
+    const formattedDate = `${currentDate.getDate().toString().padStart(2, "0")}/${(
+      currentDate.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}/99 ${currentDate
+      .getHours()
+      .toString()
+      .padStart(2, "0")}:${currentDate
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}:${currentDate.getSeconds().toString().padStart(2, "0")}`;
+
+    return (
+      `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
+      `T = ${totalPrice}\nNT = ${totalPrice}\n${ticketNumber2} PP\n` +
+      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.\n`
     );
-  };  
-  
+  };
 
   return (
     <View style={styles.container}>
@@ -175,7 +186,7 @@ const BuyScreen = () => {
         {textFields.map((field) => (
           <TouchableOpacity
             key={field.id}
-            onPress={() => handleFocus(field.id)}
+            onPress={() => handleFieldFocus(field.id)}
           >
             <View
               style={[
@@ -195,57 +206,66 @@ const BuyScreen = () => {
       </ScrollView>
       <CustomKeyboard onKeyPress={handleKeyPress} />
 
-      {/* Ticket Number Modal */}
-      <Modal
+      <ModalComponent
         visible={modalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Enter Ticket Number</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ticket Number"
-              value={ticketNumber}
-              onChangeText={setTicketNumber}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ticket Number 2"
-              value={ticketNumber2}
-              onChangeText={setTicketNumber2}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              placeholder="6D GD"
-              value={SixDGD}
-              onChangeText={setSixDGD}
-              keyboardType="numeric"
-            />
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setModalVisible(false)}
-                color="red"
-              />
-              <Button
-                title="Submit"
-                onPress={() => {
-                  setModalVisible(false);
-                  handleSubmit();
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onCancel={() => setModalVisible(false)}
+        onSubmit={handleSubmit}
+        ticketNumber={ticketNumber}
+        setTicketNumber={setTicketNumber}
+        ticketNumber2={ticketNumber2}
+        setTicketNumber2={setTicketNumber2}
+        SixDGD={SixDGD}
+        setSixDGD={setSixDGD}
+      />
     </View>
   );
 };
+
+// Modal Component
+const ModalComponent = ({
+  visible,
+  onCancel,
+  onSubmit,
+  ticketNumber,
+  setTicketNumber,
+  ticketNumber2,
+  setTicketNumber2,
+  SixDGD,
+  setSixDGD,
+}) => (
+  <Modal visible={visible} transparent={true} animationType="fade">
+    <View style={styles.modalBackground}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Enter Ticket Number</Text>
+        <TextInput
+          style={styles.modalInput}
+          placeholder="Ticket Number"
+          value={ticketNumber}
+          onChangeText={setTicketNumber}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.modalInput}
+          placeholder="Ticket Number 2"
+          value={ticketNumber2}
+          onChangeText={setTicketNumber2}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.modalInput}
+          placeholder="6D GD"
+          value={SixDGD}
+          onChangeText={setSixDGD}
+          keyboardType="numeric"
+        />
+        <View style={styles.modalActions}>
+          <Button title="Cancel" onPress={onCancel} color="red" />
+          <Button title="Submit" onPress={onSubmit} />
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
 
 const styles = StyleSheet.create({
   container: {
