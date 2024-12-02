@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigation } from "@react-navigation/native";
+
 import {
   View,
   Text,
@@ -88,16 +90,30 @@ const BuyScreen = () => {
 
   const handleFieldFocus = (id) => setActiveField(id);
 
+  const navigation = useNavigation(); // Hook for navigation
+
   const handleSubmit = () => {
     const formattedData = formatData();
     const totalPrice = calculateTotalPrice();
 
-    Alert.alert(
-      "Output",
-      generateOutputMessage(formattedData, totalPrice)
-    );
+    const details = generateOutputMessage(formattedData, totalPrice);
+
+    // Navigate to OutputScreen with data
+    navigation.navigate("OrderScreen", { formattedData, totalPrice, details });
+
+    resetBuyScreen();
   };
 
+  const resetBuyScreen = () => {
+    // Reset all fields to initial state
+    setTextFields([{ id: 1, value: "" }]);
+    setActiveField(1);
+    setTicketNumber("");
+    setTicketNumber2("");
+    setSixDGD("");
+    setModalVisible(false);
+  };
+  
   const formatData = () => {
     const mapping = { 1: "M", 2: "K", 3: "T", 4: "S", 8: "G", 9: "E" };
   
@@ -108,6 +124,17 @@ const BuyScreen = () => {
         if (input.includes("#")) {
           const [base, ...parts] = input.split("#");
           const cleanedBase = base.replace("**", ""); // Remove "**"
+          const cleanedBase1 = base.replace("*", "");
+
+          if (base.startsWith("**")) {
+            const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            return `ib(${cleanedBase}) ${formattedParts}`;
+          }
+
+          if (base.startsWith("*")) {
+            const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            return `box(${cleanedBase1}) ${formattedParts}`;
+          }
   
           if (base.length === 4) {
             // 4-digit validation
@@ -141,23 +168,51 @@ const BuyScreen = () => {
       .map((char) => mapping[char] || char)
       .join("");
 
-  const calculateTotalPrice = () => {
-    return textFields.reduce((total, field) => {
-      const input = field.value;
-
-      if (input.includes("#")) {
-        const [, ...parts] = input.split("#");
-        const sum = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
-
-        const multiplier = textFields.find((f) => !f.value.includes("#"))
-          ?.value.length || 1;
-
-        return total + sum * multiplier;
-      }
-
-      return total;
-    }, 0);
-  };
+      const calculateTotalPrice = () => {
+        // Utility function to calculate factorial
+        const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+      
+        // Utility function to calculate permutations
+        const calculatePermutations = (numString) => {
+          const freq = {};
+          for (const char of numString) {
+            freq[char] = (freq[char] || 0) + 1; // Count frequency of each digit
+          }
+      
+          const totalDigits = numString.length; // Total digits
+          const denominator = Object.values(freq).reduce(
+            (acc, count) => acc * factorial(count),
+            1
+          );
+          return factorial(totalDigits) / denominator;
+        };
+      
+        return textFields.reduce((total, field) => {
+          const input = field.value;
+      
+          if (input.includes("#")) {
+            const [base, ...parts] = input.split("#"); // Split input into base and parts
+            const sum = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
+      
+            let multiplier = 1;
+            let multiplier1 = 1;
+      
+            // Check if the base starts with "*"
+            if (base.startsWith("*")) {
+              const cleanedBase = base.replace("*", ""); // Remove the leading '*'
+              multiplier = calculatePermutations(cleanedBase); // Calculate permutation-based multiplier
+              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length;
+            } else {
+              // Default multiplier for entries without '*'
+              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length;
+            }
+      
+            return total + sum * multiplier * multiplier1; // Add weighted sum to total
+          }
+      
+          return total; // Add 0 for inputs without '#'
+        }, 0);
+      };       
 
   const generateOutputMessage = (formattedData, totalPrice) => {
     const currentDate = new Date();
