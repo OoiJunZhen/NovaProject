@@ -83,7 +83,9 @@ const BuyScreen = () => {
   const appendCharacter = (key) => {
     setTextFields((prev) =>
       prev.map((field) =>
-        field.id === activeField ? { ...field, value: field.value + key } : field
+        field.id === activeField
+          ? { ...field, value: field.value + key }
+          : field
       )
     );
   };
@@ -113,14 +115,14 @@ const BuyScreen = () => {
     setSixDGD("");
     setModalVisible(false);
   };
-  
+
   const formatData = () => {
     const mapping = { 1: "M", 2: "K", 3: "T", 4: "S", 8: "G", 9: "E" };
-  
+
     return textFields
       .map((field) => {
         const input = field.value;
-  
+
         if (input.includes("#")) {
           const [base, ...parts] = input.split("#");
           const cleanedBase = base.replace("**", ""); // Remove "**"
@@ -135,32 +137,43 @@ const BuyScreen = () => {
             const formattedParts = mapSuffixes(parts, ["B", "S"]);
             return `box(${cleanedBase1}) ${formattedParts}`;
           }
-  
+
           if (base.length === 4) {
             // 4-digit validation
             return input.includes("**#")
-              ? `${cleanedBase} ${mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])}`
+              ? `${cleanedBase} ${mapSuffixes(parts, [
+                  "4A",
+                  "4B",
+                  "4C",
+                  "4D",
+                  "4E",
+                ])}`
               : `${cleanedBase} ${mapSuffixes(parts, ["B", "S", "A", "C"])}`;
           } else if (base.length === 3) {
             // 3-digit validation
             return input.includes("**#")
-              ? `${cleanedBase} ${mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])}`
+              ? `${cleanedBase} ${mapSuffixes(parts, [
+                  "A",
+                  "QB",
+                  "QC",
+                  "QD",
+                  "QE",
+                ])}`
               : `${cleanedBase} ${mapSuffixes(parts, ["A", "C"])}`;
           }
         }
-  
+
         return mapCharacters(input, mapping); // Default character mapping
       })
       .join("\n");
   };
-  
+
   // Utility to map suffixes to parts
   const mapSuffixes = (values, labels) =>
     values
       .map((value, index) => (labels[index] ? `${labels[index]}${value}` : ""))
       .filter(Boolean)
       .join("-");
-  
 
   const mapCharacters = (input, mapping) =>
     input
@@ -191,34 +204,38 @@ const BuyScreen = () => {
           const input = field.value;
       
           if (input.includes("#")) {
-            const [base, ...parts] = input.split("#"); // Split input into base and parts
+            const [base, ...parts] = input.split("#"); 
             const sum = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
       
-            let multiplier = 1;
-            let multiplier1 = 1;
+            let multiplier = 1; 
+            let multiplier1 = 1; 
       
-            // Check if the base starts with "*"
-            if (base.startsWith("*")) {
-              const cleanedBase = base.replace("*", ""); // Remove the leading '*'
-              multiplier = calculatePermutations(cleanedBase); // Calculate permutation-based multiplier
-              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length;
+            if (base.startsWith("**")) {
+              const cleanedBase = base.replace("**", "");
+              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length || 1;
+            } else if (base.startsWith("*")) {
+              const cleanedBase = base.replace("*", "");
+              multiplier = calculatePermutations(cleanedBase);
+              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length || 1;
             } else {
-              // Default multiplier for entries without '*'
-              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length;
+              // Default case
+              multiplier1 = textFields.find((f) => !f.value.includes("#"))?.value.length || 1;
             }
       
-            return total + sum * multiplier * multiplier1; // Add weighted sum to total
+            return total + sum * multiplier * multiplier1;
           }
       
-          return total; // Add 0 for inputs without '#'
+          return total;
         }, 0);
-      };       
+      };
+      
 
   const generateOutputMessage = (formattedData, totalPrice) => {
     const currentDate = new Date();
-    const formattedDate = `${currentDate.getDate().toString().padStart(2, "0")}/${(
-      currentDate.getMonth() + 1
-    )
+    const formattedDate = `${currentDate
+      .getDate()
+      .toString()
+      .padStart(2, "0")}/${(currentDate.getMonth() + 1)
       .toString()
       .padStart(2, "0")}/99 ${currentDate
       .getHours()
@@ -226,7 +243,10 @@ const BuyScreen = () => {
       .padStart(2, "0")}:${currentDate
       .getMinutes()
       .toString()
-      .padStart(2, "0")}:${currentDate.getSeconds().toString().padStart(2, "0")}`;
+      .padStart(2, "0")}:${currentDate
+      .getSeconds()
+      .toString()
+      .padStart(2, "0")}`;
 
     return (
       `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
