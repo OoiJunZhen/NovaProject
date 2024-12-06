@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigation } from "@react-navigation/native";
-
+import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -41,23 +40,40 @@ const CustomKeyboard = ({ onKeyPress }) => {
   );
 };
 
-// Main BuyScreen Component
-const BuyScreen = () => {
-  const [textFields, setTextFields] = useState([{ id: 1, value: "", cursorPosition: 0}]);
+const ReBuyScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  // Retrieve parameters passed from OrderScreen
+  const {
+    userInput, // Ensure userInput defaults to an empty array if not passed
+    ticketNumber: initialTicketNumber,
+    ticketNumber2: initialTicketNumber2,
+    SixDGD: initialSixDGD,
+  } = route.params || {};
+
+  const [textFields, setTextFields] = useState(
+    userInput.length > 0
+      ? userInput.map((item, index) => ({
+          id: item.id || index + 1,
+          value: item.value || "",
+        }))
+      : [{ id: 1, value: "" }]
+  );
   const [activeField, setActiveField] = useState(1);
   const [caretVisible, setCaretVisible] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [ticketNumber, setTicketNumber] = useState("");
-  const [ticketNumber2, setTicketNumber2] = useState("");
-  const [SixDGD, setSixDGD] = useState("");
-
-  const navigation = useNavigation();
+  const [ticketNumber, setTicketNumber] = useState(initialTicketNumber || "");
+  const [ticketNumber2, setTicketNumber2] = useState(
+    initialTicketNumber2 || ""
+  );
+  const [SixDGD, setSixDGD] = useState(initialSixDGD || "");
 
   // Toggle caret visibility
-  // useEffect(() => {
-  //   const interval = setInterval(() => setCaretVisible((prev) => !prev), 500);
-  //   return () => clearInterval(interval);
-  // }, []);
+  useEffect(() => {
+    const interval = setInterval(() => setCaretVisible((prev) => !prev), 500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handlers for KeyPress
   const handleKeyPress = (key) => {
@@ -68,24 +84,15 @@ const BuyScreen = () => {
   };
 
   const addNewField = () => {
-    setTextFields((prev) => [
-      ...prev,
-      { id: prev.length + 1, value: "", cursorPosition: 0 },
-    ]);
+    setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
     setActiveField(textFields.length + 1);
   };
 
   const deleteLastCharacter = () => {
     setTextFields((prev) =>
       prev.map((field) =>
-        field.id === activeField && field.cursorPosition > 0
-          ? {
-              ...field,
-              value:
-                field.value.slice(0, field.cursorPosition - 1) +
-                field.value.slice(field.cursorPosition),
-              cursorPosition: field.cursorPosition - 1, // Move cursor back
-            }
+        field.id === activeField
+          ? { ...field, value: field.value.slice(0, -1) }
           : field
       )
     );
@@ -95,43 +102,13 @@ const BuyScreen = () => {
     setTextFields((prev) =>
       prev.map((field) =>
         field.id === activeField
-          ? {
-              ...field,
-              value:
-                field.value.slice(0, field.cursorPosition) +
-                key +
-                field.value.slice(field.cursorPosition),
-              cursorPosition: field.cursorPosition + 1, // Move cursor forward
-            }
+          ? { ...field, value: field.value + key }
           : field
       )
     );
   };
 
   const handleFieldFocus = (id) => setActiveField(id);
-
-  const handleTextChange = (text, id) => {
-    setTextFields((prev) =>
-      prev.map((field) =>
-        field.id === id
-          ? {
-              ...field,
-              value: text,
-              cursorPosition: text.length, // Update cursor to the end
-            }
-          : field
-      )
-    );
-  };
-
-  const updateCursorPosition = (e, id) => {
-    const position = e.nativeEvent.selection.start;
-    setTextFields((prev) =>
-      prev.map((field) =>
-        field.id === id ? { ...field, cursorPosition: position } : field
-      )
-    );
-  };
 
   const handleSubmit = () => {
     const formattedData = formatData();
@@ -142,6 +119,7 @@ const BuyScreen = () => {
     // Navigate to OutputScreen with data
     navigation.navigate("OrderScreen", {
       userInput: textFields,
+      formattedData,
       details,
       ticketNumber,
       ticketNumber2,
@@ -363,24 +341,22 @@ const BuyScreen = () => {
     <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView style={styles.inputContainer}>
         {textFields.map((field) => (
-          <TextInput
-            key={field.id}
-            style={[
-              styles.input,
-              activeField === field.id && styles.activeInput,
-            ]}
-            value={field.value}
-            onChangeText={(text) => handleTextChange(text, field.id)}
-            onFocus={() => handleFieldFocus(field.id)}
-            showSoftInputOnFocus={false} // Disable default keyboard
-            onSelectionChange={(e) => updateCursorPosition(e, field.id)}
-            selection={{
-              start: field.cursorPosition,
-              end: field.cursorPosition,
-            }} // Sync cursor position
-          />
+          <View key={field.id} style={styles.fieldWrapper}>
+            <TextInput
+              style={[
+                styles.input,
+                activeField === field.id && styles.activeInput,
+              ]}
+              value={field.value}
+              onChangeText={(text) => handleTextChange(text, field.id)}
+              onFocus={() => handleFieldFocus(field.id)}
+              showSoftInputOnFocus={false} // Disable default keyboard to use CustomKeyboard
+            />
+          </View>
         ))}
       </ScrollView>
+
+      {/* Replace this with your actual custom keyboard component */}
       <CustomKeyboard onKeyPress={handleKeyPress} />
 
       <ModalComponent
@@ -538,4 +514,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BuyScreen;
+export default ReBuyScreen;

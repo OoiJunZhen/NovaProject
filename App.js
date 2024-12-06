@@ -1,11 +1,15 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
-import { StyleSheet, StatusBar } from 'react-native';
-import MainScreen from './MainScreen';
-import BuyScreen from './BuyScreen';
-import OrderScreen from './OrderScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import {
+  createStackNavigator,
+  CardStyleInterpolators,
+} from "@react-navigation/stack";
+import { StyleSheet, StatusBar } from "react-native";
+import MainScreen from "./MainScreen";
+import BuyScreen from "./BuyScreen";
+import OrderScreen from "./OrderScreen";
+import ReBuyScreen from "./ReBuyScreen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // ErrorBoundary Component for fallback UI
 class ErrorBoundary extends React.Component {
@@ -19,7 +23,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught an error', error, errorInfo);
+    console.error("ErrorBoundary caught an error", error, errorInfo);
   }
 
   render() {
@@ -46,7 +50,7 @@ const App = () => {
             initialRouteName="MainScreen"
             screenOptions={{
               headerStyle: styles.headerStyle,
-              headerTintColor: '#fff',
+              headerTintColor: "#fff",
               headerTitleStyle: styles.headerTitle,
               cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS, // Smooth transitions
             }}
@@ -59,12 +63,17 @@ const App = () => {
             <Stack.Screen
               name="BuyScreen"
               component={BuyScreen}
-              options={{ title: 'Buy' }}
+              options={{ title: "Buy" }}
             />
             <Stack.Screen
               name="OrderScreen"
               component={OrderScreen}
-              options={{ title: 'Order Summary' }}
+              options={{ title: "Order Summary" }}
+            />
+            <Stack.Screen 
+            name="ReBuyScreen" 
+            component={ReBuyScreen} 
+            options = {{ title: "Buy"}}
             />
           </Stack.Navigator>
         </NavigationContainer>
@@ -75,10 +84,10 @@ const App = () => {
 
 const styles = StyleSheet.create({
   headerStyle: {
-    backgroundColor: '#4CAF50', // Customize header background color
+    backgroundColor: "#4CAF50", // Customize header background color
   },
   headerTitle: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 
