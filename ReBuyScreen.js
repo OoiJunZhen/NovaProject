@@ -148,45 +148,46 @@ const ReBuyScreen = () => {
 
         if (input.includes("#")) {
           const [base, ...parts] = input.split("#");
-          const cleanedBase = base.replace("**", ""); // Remove "**"
+          console.log("Base:", base);
+          console.log("Parts:", parts);
+
+          const cleanedBase = base.replace("**", "");
           const cleanedBase1 = base.replace("*", "");
+          console.log("Cleaned Base:", cleanedBase);
+          console.log("Cleaned Base1:", cleanedBase1);
 
           if (base.startsWith("**")) {
             const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            console.log("Formatted Parts for '**':", formattedParts);
             return `ib(${cleanedBase}) ${formattedParts}`;
           }
 
           if (base.startsWith("*")) {
             const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            console.log("Formatted Parts for '*':", formattedParts);
             return `box(${cleanedBase1}) ${formattedParts}`;
           }
 
-          if (base.length === 4) {
+          if (cleanedBase.length === 4) {
             // 4-digit validation
-            return input.includes("**#")
-              ? `${cleanedBase} ${mapSuffixes(parts, [
-                  "4A",
-                  "4B",
-                  "4C",
-                  "4D",
-                  "4E",
-                ])}`
-              : `${cleanedBase} ${mapSuffixes(parts, ["B", "S", "A", "C"])}`;
-          } else if (base.length === 3) {
+            const formattedParts = input.includes("**#")
+              ? mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])
+              : mapSuffixes(parts, ["B", "S", "A", "C"]);
+            console.log("Formatted Parts for 4-digit base:", formattedParts);
+            return `${cleanedBase} ${formattedParts}`;
+          } else if (cleanedBase.length === 3) {
             // 3-digit validation
-            return input.includes("**#")
-              ? `${cleanedBase} ${mapSuffixes(parts, [
-                  "A",
-                  "QB",
-                  "QC",
-                  "QD",
-                  "QE",
-                ])}`
-              : `${cleanedBase} ${mapSuffixes(parts, ["A", "C"])}`;
+            const formattedParts = input.includes("**#")
+              ? mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])
+              : mapSuffixes(parts, ["A", "C"]);
+            console.log("Formatted Parts for 3-digit base:", formattedParts);
+            return `${cleanedBase} ${formattedParts}`;
           }
+        } else if (!input.includes("#") || !input.includes("**#")) {
+          const mappedCharacters = mapCharacters(input, mapping);
+          console.log("Mapped Characters:", mappedCharacters);
+          return mappedCharacters; // Default character mapping
         }
-
-        return mapCharacters(input, mapping); // Default character mapping
       })
       .join("\n");
   };
