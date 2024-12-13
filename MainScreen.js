@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-
+ 
 const MainScreen = ({ navigation }) => {
   const menuItems = [
     { title: 'BUY', icon: 'shopping-cart', color: '#4CAF50', action: () => navigation.navigate('BuyScreen') },
