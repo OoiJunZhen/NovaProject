@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from "react";
+import { useNavigation } from "@react-navigation/native";
+
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   Button,
+  KeyboardAvoidingView,
 } from "react-native";
 
+// Custom Keyboard Component
 const CustomKeyboard = ({ onKeyPress }) => {
-  const rows = [
+  const keys = [
     ["1", "2", "3", "⌫"],
     ["4", "5", "6", "D"],
     ["7", "8", "9", "OK"],
@@ -21,7 +24,7 @@ const CustomKeyboard = ({ onKeyPress }) => {
 
   return (
     <View style={styles.keyboard}>
-      {rows.map((row, rowIndex) => (
+      {keys.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.row}>
           {row.map((key) => (
             <TouchableOpacity
@@ -38,6 +41,7 @@ const CustomKeyboard = ({ onKeyPress }) => {
   );
 };
 
+// Main BuyScreen Component
 const BuyScreen = () => {
   const [textFields, setTextFields] = useState([{ id: 1, value: "" }]);
   const [activeField, setActiveField] = useState(1);
@@ -47,127 +51,302 @@ const BuyScreen = () => {
   const [ticketNumber2, setTicketNumber2] = useState("");
   const [SixDGD, setSixDGD] = useState("");
 
+  const navigation = useNavigation();
+
   // Toggle caret visibility
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCaretVisible((prev) => !prev);
-    }, 500); // Blinks every 500ms
-    return () => clearInterval(interval); // Cleanup on unmount
+    const interval = setInterval(() => setCaretVisible((prev) => !prev), 500);
+    return () => clearInterval(interval);
   }, []);
 
-  // Handle key presses
+  // Handlers for KeyPress
   const handleKeyPress = (key) => {
-    if (key === "↵") {
-      setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
-      setActiveField(textFields.length + 1);
-    } else if (key === "⌫") {
-      setTextFields((prev) =>
-        prev.map((field) =>
-          field.id === activeField
-            ? { ...field, value: field.value.slice(0, -1) }
-            : field
-        )
-      );
-    } else if (key === "OK") {
-      setModalVisible(true); // Show the modal for ticket number
-    } else {
-      setTextFields((prev) =>
-        prev.map((field) =>
-          field.id === activeField
-            ? { ...field, value: field.value + key }
-            : field
-        )
-      );
+    if (key === "↵") addNewField();
+    else if (key === "⌫") deleteLastCharacter();
+    else if (key === "OK") setModalVisible(true);
+    else appendCharacter(key);
+  };
+
+  const addNewField = () => {
+    setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
+    setActiveField(textFields.length + 1);
+  };
+
+  const deleteLastCharacter = () => {
+    setTextFields((prev) =>
+      prev.map((field) =>
+        field.id === activeField
+          ? { ...field, value: field.value.slice(0, -1) }
+          : field
+      )
+    );
+  };
+
+  const appendCharacter = (key) => {
+    setTextFields((prev) =>
+      prev.map((field) =>
+        field.id === activeField
+          ? { ...field, value: field.value + key }
+          : field
+      )
+    );
+  };
+
+  const handleFieldFocus = (id) => setActiveField(id);
+
+  const handleSubmit = async () => {
+    const formattedData = formatData();
+    const totalPrice = calculateTotalPrice();
+  
+    const details = generateOutputMessage(formattedData, totalPrice);
+  
+    const payload = {
+      ticket_number: ticketNumber,
+      ticket_number2: ticketNumber2,
+      six_dgd: SixDGD,
+      user_inputs: textFields,
+      formatted_data: formattedData,
+      total_price: totalPrice,
+      details: details,
+    };
+  
+    try {
+      const response = await fetch("http://192.168.30.117/NovaProject/save_order.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (result.success) {
+        alert("Data stored successfully!");
+        navigation.navigate("OrderScreen", {
+          userInput: textFields,
+          details,
+          ticketNumber,
+          ticketNumber2,
+          SixDGD,
+        });
+        resetBuyScreen();
+      } else {
+        alert("Failed to store data: " + result.message);
+      }
+    } catch (error) {
+      alert("Error: " + error.message);
     }
   };
+  
 
-  // Handle field focus
-  const handleFocus = (id) => {
-    setActiveField(id);
+  const resetBuyScreen = () => {
+    // Reset all fields to initial state
+    setTextFields([{ id: 1, value: "" }]);
+    setActiveField(1);
+    setTicketNumber("");
+    setTicketNumber2("");
+    setSixDGD("");
+    setModalVisible(false);
   };
 
-  // Handle submit
-  const handleSubmit = () => {
+  const formatData = () => {
     const mapping = { 1: "M", 2: "K", 3: "T", 4: "S", 8: "G", 9: "E" };
-  
-    const formattedData = textFields
+
+    return textFields
       .map((field) => {
         const input = field.value;
-  
+
         if (input.includes("#")) {
-          const parts = input.split("#");
-          const base = parts[0];
-  
-          // Dynamically generate suffixes based on user input
-          const mappedSuffixes = parts
-            .slice(1) // Ignore the base part
-            .map((value, index) => {
-              const suffixLabel = ["B", "S", "A", "C"][index] || ""; // Get label dynamically
-              return suffixLabel ? `${suffixLabel}${value}` : ""; // Combine label with user input
-            })
-            .filter((suffix) => suffix !== "") // Remove empty suffixes
-            .join("-");
-  
-          return `${base} ${mappedSuffixes}`;
-        } else {
-          return input
-            .split("")
-            .map((char) => (mapping[char] ? `${mapping[char]}` : char))
-            .join("");
+          const [base, ...parts] = input.split("#");
+          console.log("Base:", base);
+          console.log("Parts:", parts);
+
+          const cleanedBase = base.replace("**", "");
+          const cleanedBase1 = base.replace("*", "");
+          console.log("Cleaned Base:", cleanedBase);
+          console.log("Cleaned Base1:", cleanedBase1);
+
+          if (base.startsWith("**")) {
+            const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            console.log("Formatted Parts for '**':", formattedParts);
+            return `ib(${cleanedBase}) ${formattedParts}`;
+          }
+
+          if (base.startsWith("*")) {
+            const formattedParts = mapSuffixes(parts, ["B", "S"]);
+            console.log("Formatted Parts for '*':", formattedParts);
+            return `box(${cleanedBase1}) ${formattedParts}`;
+          }
+
+          if (cleanedBase.length === 4) {
+            // 4-digit validation
+            const formattedParts = input.includes("**#")
+              ? mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])
+              : mapSuffixes(parts, ["B", "S", "A", "C"]);
+            console.log("Formatted Parts for 4-digit base:", formattedParts);
+            return `${cleanedBase} ${formattedParts}`;
+          } else if (cleanedBase.length === 3) {
+            // 3-digit validation
+            const formattedParts = input.includes("**#")
+              ? mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])
+              : mapSuffixes(parts, ["A", "C"]);
+            console.log("Formatted Parts for 3-digit base:", formattedParts);
+            return `${cleanedBase} ${formattedParts}`;
+          }
+        } else if (!input.includes("#") || !input.includes("**#")) {
+          const mappedCharacters = mapCharacters(input, mapping);
+          console.log("Mapped Characters:", mappedCharacters);
+          return mappedCharacters; // Default character mapping
         }
       })
       .join("\n");
-  
-    // Calculate totalPrice
-    const totalPrice = textFields.reduce((total, field) => {
-      const input = field.value;
-  
-      if (input.includes("#")) {
-        const parts = input.split("#").slice(1); // Extract values after the base part
-        const sumOfNumbers = parts.reduce((sum, value) => sum + parseInt(value || 0, 10), 0);
-  
-        // Find another field without # to use its digit count
-        const multiplierField = textFields.find((f) => !f.value.includes("#"));
-        const multiplier = multiplierField ? multiplierField.value.length : 1;
-  
-        return total + sumOfNumbers * multiplier;
-      } else {
-        return total; // No # means no addition to total
+  };
+
+  // Utility to map suffixes to parts
+  const mapSuffixes = (values, labels) =>
+    values
+      .map((value, index) => (labels[index] ? `${labels[index]}${value}` : ""))
+      .filter(Boolean)
+      .join("-");
+
+  // Utility to map characters using mapping
+  const mapCharacters = (input, mapping) =>
+    input
+      .split("")
+      .map((char) => mapping[char] || char)
+      .join("");
+
+  const calculateTotalPrice = () => {
+    let totalPrice = 0;
+    let currentGroup = [];
+    let multiplier = 1;
+
+    const groups = [];
+
+    // Helper function to calculate factorial
+    const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+
+    // Helper function to calculate permutations
+    const calculatePermutations = (numString) => {
+      const freq = {};
+      for (const char of numString) {
+        freq[char] = (freq[char] || 0) + 1; // Count frequency of each digit
       }
-    }, 0);
-  
+
+      const totalDigits = numString.length; // Total digits
+      const denominator = Object.values(freq).reduce(
+        (acc, count) => acc * factorial(count),
+        1
+      );
+      return factorial(totalDigits) / denominator;
+    };
+
+    // Helper function to calculate the number of digits in the multiplier
+    const getMultiplierLength = (num) => num.toString().length;
+
+    // Group inputs and calculate their respective sums and totals
+    textFields.forEach((field) => {
+      const input = field.value;
+
+      if (!input.includes("#")) {
+        // If it's a line without `#`, it's a multiplier and marks the start of a new group
+        if (currentGroup.length > 0) {
+          // Process the previous group before starting a new one
+          const sum = currentGroup.reduce((sum, item) => {
+            const [base, ...parts] = item.split("#"); // Split input into base and parts
+            const baseMultiplier =
+              base.startsWith("*") && !base.startsWith("**")
+                ? calculatePermutations(base.replace("*", ""))
+                : 1; // Use permutation multiplier for `*` prefixed base
+            const partsSum = parts.reduce(
+              (acc, num) => acc + parseInt(num || 0, 10),
+              0
+            );
+            return sum + partsSum * baseMultiplier;
+          }, 0);
+
+          const groupMultiplier = getMultiplierLength(multiplier); // Get length of multiplier
+          const groupTotal = sum * groupMultiplier;
+          totalPrice += groupTotal;
+
+          groups.push({
+            group: [multiplier.toString(), ...currentGroup],
+            sum,
+            total: groupTotal,
+          });
+        }
+
+        // Start a new group
+        currentGroup = [];
+        multiplier = parseInt(input, 10) || 1;
+      } else {
+        // If it contains `#`, add it to the current group
+        currentGroup.push(input);
+      }
+    });
+
+    // Process the last group
+    if (currentGroup.length > 0) {
+      const sum = currentGroup.reduce((sum, item) => {
+        const [base, ...parts] = item.split("#"); // Split input into base and parts
+        const baseMultiplier =
+          base.startsWith("*") && !base.startsWith("**")
+            ? calculatePermutations(base.replace("*", ""))
+            : 1; // Use permutation multiplier for `*` prefixed base
+        const partsSum = parts.reduce(
+          (acc, num) => acc + parseInt(num || 0, 10),
+          0
+        );
+        return sum + partsSum * baseMultiplier;
+      }, 0);
+
+      const groupMultiplier = getMultiplierLength(multiplier); // Get length of multiplier
+      const groupTotal = sum * groupMultiplier;
+      totalPrice += groupTotal;
+
+      groups.push({
+        group: [multiplier.toString(), ...currentGroup],
+        sum,
+        total: groupTotal,
+      });
+    }
+
+    // Log the grouped results for clarity (can be removed in production)
+    groups.forEach(({ group, sum, total }) => {
+      console.log(
+        `Group: ${JSON.stringify(group)}, Sum: ${sum}, Total: ${total}`
+      );
+    });
+
+    // Log the total price
+    console.log(`Total Price: ${totalPrice}`);
+
+    return totalPrice;
+  };
+
+  const generateOutputMessage = (formattedData, totalPrice) => {
     const currentDate = new Date();
-    const formattedDate =
-      `${currentDate.getDate().toString().padStart(2, "0")}/` +
-      `${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/` +
-      `99 ${currentDate.getHours().toString().padStart(2, "0")}:` +
-      `${currentDate.getMinutes().toString().padStart(2, "0")}:` +
-      `${currentDate.getSeconds().toString().padStart(2, "0")}`;
-  
-    const AppName = "(PP)";
-    const userName = "SG0003";
-    const specialChar = "*BSAC4A 1*1";
-    const buyDate = "30/11";
-  
-    Alert.alert(
-      "Output",
-      `${AppName}\n` +
-        `B${formattedDate}\n` +
-        `${userName}#${ticketNumber}\n` +
-        `${specialChar}\n` +
-        `${buyDate}\n` +
-        `${formattedData}\n` +
-        `T = ${totalPrice}\n` +
-        `NT = ${totalPrice}\n` +
-        `${ticketNumber2} PP\n` +
-        `Free 6D GD\n` +
-        `${buyDate}\n` +
-        `${SixDGD}\n` +
-        `Sila semak resit.\n` +
-        `Bayaran ikut resit.\n`
+    const formattedDate = `${currentDate
+      .getDate()
+      .toString()
+      .padStart(2, "0")}/${(currentDate.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}/99 ${currentDate
+      .getHours()
+      .toString()
+      .padStart(2, "0")}:${currentDate
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}:${currentDate
+      .getSeconds()
+      .toString()
+      .padStart(2, "0")}`;
+
+    return (
+      `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
+      `T = ${totalPrice}\nNT = ${totalPrice}\n${ticketNumber2} PP\n` +
+      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.`
     );
-  };  
-  
+  };
 
   return (
     <View style={styles.container}>
@@ -175,7 +354,7 @@ const BuyScreen = () => {
         {textFields.map((field) => (
           <TouchableOpacity
             key={field.id}
-            onPress={() => handleFocus(field.id)}
+            onPress={() => handleFieldFocus(field.id)}
           >
             <View
               style={[
@@ -195,57 +374,66 @@ const BuyScreen = () => {
       </ScrollView>
       <CustomKeyboard onKeyPress={handleKeyPress} />
 
-      {/* Ticket Number Modal */}
-      <Modal
+      <ModalComponent
         visible={modalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Enter Ticket Number</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ticket Number"
-              value={ticketNumber}
-              onChangeText={setTicketNumber}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ticket Number 2"
-              value={ticketNumber2}
-              onChangeText={setTicketNumber2}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              placeholder="6D GD"
-              value={SixDGD}
-              onChangeText={setSixDGD}
-              keyboardType="numeric"
-            />
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setModalVisible(false)}
-                color="red"
-              />
-              <Button
-                title="Submit"
-                onPress={() => {
-                  setModalVisible(false);
-                  handleSubmit();
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onCancel={() => setModalVisible(false)}
+        onSubmit={handleSubmit}
+        ticketNumber={ticketNumber}
+        setTicketNumber={setTicketNumber}
+        ticketNumber2={ticketNumber2}
+        setTicketNumber2={setTicketNumber2}
+        SixDGD={SixDGD}
+        setSixDGD={setSixDGD}
+      />
     </View>
   );
 };
+
+// Modal Component
+const ModalComponent = ({
+  visible,
+  onCancel,
+  onSubmit,
+  ticketNumber,
+  setTicketNumber,
+  ticketNumber2,
+  setTicketNumber2,
+  SixDGD,
+  setSixDGD,
+}) => (
+  <Modal visible={visible} transparent={true} animationType="fade">
+    <View style={styles.modalBackground}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Enter Ticket Number</Text>
+        <TextInput
+          style={styles.modalInput}
+          placeholder="Ticket Number"
+          value={ticketNumber}
+          onChangeText={setTicketNumber}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.modalInput}
+          placeholder="Ticket Number 2"
+          value={ticketNumber2}
+          onChangeText={setTicketNumber2}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.modalInput}
+          placeholder="6D GD"
+          value={SixDGD}
+          onChangeText={setSixDGD}
+          keyboardType="numeric"
+        />
+        <View style={styles.modalActions}>
+          <Button title="Cancel" onPress={onCancel} color="red" />
+          <Button title="Submit" onPress={onSubmit} />
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
 
 const styles = StyleSheet.create({
   container: {
