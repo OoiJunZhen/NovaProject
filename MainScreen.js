@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     height: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 45,
     marginBottom: 15,
   },
   menuText: {
