@@ -110,23 +110,46 @@ const ReBuyScreen = () => {
 
   const handleFieldFocus = (id) => setActiveField(id);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const formattedData = formatData();
     const totalPrice = calculateTotalPrice();
-
+  
     const details = generateOutputMessage(formattedData, totalPrice);
-
-    // Navigate to OutputScreen with data
-    navigation.navigate("OrderScreen", {
-      userInput: textFields,
-      formattedData,
-      details,
-      ticketNumber,
-      ticketNumber2,
-      SixDGD,
-    });
-
-    resetBuyScreen();
+  
+    const payload = {
+      ticket_number: ticketNumber,
+      ticket_number2: ticketNumber2,
+      six_dgd: SixDGD,
+      user_inputs: textFields,
+      formatted_data: formattedData,
+      total_price: totalPrice,
+    };
+  
+    try {
+      const response = await fetch("http://192.168.30.117/NovaProject/save_order.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (result.success) {
+        alert("Data stored successfully!");
+        navigation.navigate("OrderScreen", {
+          userInput: textFields,
+          details,
+          ticketNumber,
+          ticketNumber2,
+          SixDGD,
+        });
+        resetBuyScreen();
+      } else {
+        alert("Failed to store data: " + result.message);
+      }
+    } catch (error) {
+      alert("Error: " + error.message);
+    }
   };
 
   const resetBuyScreen = () => {
@@ -334,7 +357,7 @@ const ReBuyScreen = () => {
     return (
       `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
       `T = ${totalPrice}\nNT = ${totalPrice}\n${ticketNumber2} PP\n` +
-      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.\n`
+      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.`
     );
   };
 

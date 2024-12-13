@@ -43,9 +43,7 @@ const CustomKeyboard = ({ onKeyPress }) => {
 
 // Main BuyScreen Component
 const BuyScreen = () => {
-  const [textFields, setTextFields] = useState([
-    { id: 1, value: "", cursorPosition: 0 },
-  ]);
+  const [textFields, setTextFields] = useState([{ id: 1, value: "" }]);
   const [activeField, setActiveField] = useState(1);
   const [caretVisible, setCaretVisible] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -70,24 +68,15 @@ const BuyScreen = () => {
   };
 
   const addNewField = () => {
-    setTextFields((prev) => [
-      ...prev,
-      { id: prev.length + 1, value: "", cursorPosition: 0 },
-    ]);
+    setTextFields((prev) => [...prev, { id: prev.length + 1, value: "" }]);
     setActiveField(textFields.length + 1);
   };
 
   const deleteLastCharacter = () => {
     setTextFields((prev) =>
       prev.map((field) =>
-        field.id === activeField && field.cursorPosition > 0
-          ? {
-              ...field,
-              value:
-                field.value.slice(0, field.cursorPosition - 1) +
-                field.value.slice(field.cursorPosition),
-              cursorPosition: field.cursorPosition - 1, // Move cursor back
-            }
+        field.id === activeField
+          ? { ...field, value: field.value.slice(0, -1) }
           : field
       )
     );
@@ -97,14 +86,7 @@ const BuyScreen = () => {
     setTextFields((prev) =>
       prev.map((field) =>
         field.id === activeField
-          ? {
-              ...field,
-              value:
-                field.value.slice(0, field.cursorPosition) +
-                key +
-                field.value.slice(field.cursorPosition),
-              cursorPosition: field.cursorPosition + 1, // Move cursor forward
-            }
+          ? { ...field, value: field.value + key }
           : field
       )
     );
@@ -112,46 +94,49 @@ const BuyScreen = () => {
 
   const handleFieldFocus = (id) => setActiveField(id);
 
-  const handleTextChange = (text, id) => {
-    setTextFields((prev) =>
-      prev.map((field) =>
-        field.id === id
-          ? {
-              ...field,
-              value: text,
-              cursorPosition: text.length, // Update cursor to the end
-            }
-          : field
-      )
-    );
-  };
-
-  const updateCursorPosition = (e, id) => {
-    const position = e.nativeEvent.selection.start;
-    setTextFields((prev) =>
-      prev.map((field) =>
-        field.id === id ? { ...field, cursorPosition: position } : field
-      )
-    );
-  };
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const formattedData = formatData();
     const totalPrice = calculateTotalPrice();
-
+  
     const details = generateOutputMessage(formattedData, totalPrice);
-
-    // Navigate to OutputScreen with data
-    navigation.navigate("OrderScreen", {
-      userInput: textFields,
-      details,
-      ticketNumber,
-      ticketNumber2,
-      SixDGD,
-    });
-
-    resetBuyScreen();
+  
+    const payload = {
+      ticket_number: ticketNumber,
+      ticket_number2: ticketNumber2,
+      six_dgd: SixDGD,
+      user_inputs: textFields,
+      formatted_data: formattedData,
+      total_price: totalPrice,
+      details: details,
+    };
+  
+    try {
+      const response = await fetch("http://192.168.30.117/NovaProject/save_order.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (result.success) {
+        alert("Data stored successfully!");
+        navigation.navigate("OrderScreen", {
+          userInput: textFields,
+          details,
+          ticketNumber,
+          ticketNumber2,
+          SixDGD,
+        });
+        resetBuyScreen();
+      } else {
+        alert("Failed to store data: " + result.message);
+      }
+    } catch (error) {
+      alert("Error: " + error.message);
+    }
   };
+  
 
   const resetBuyScreen = () => {
     // Reset all fields to initial state
@@ -359,30 +344,32 @@ const BuyScreen = () => {
     return (
       `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
       `T = ${totalPrice}\nNT = ${totalPrice}\n${ticketNumber2} PP\n` +
-      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.\n`
+      `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.`
     );
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior="padding">
+    <View style={styles.container}>
       <ScrollView style={styles.inputContainer}>
         {textFields.map((field) => (
-          <TextInput
+          <TouchableOpacity
             key={field.id}
-            style={[
-              styles.input,
-              activeField === field.id && styles.activeInput,
-            ]}
-            value={field.value}
-            onChangeText={(text) => handleTextChange(text, field.id)}
-            onFocus={() => handleFieldFocus(field.id)}
-            showSoftInputOnFocus={false} // Disable default keyboard
-            onSelectionChange={(e) => updateCursorPosition(e, field.id)}
-            selection={{
-              start: field.cursorPosition,
-              end: field.cursorPosition,
-            }} // Sync cursor position
-          />
+            onPress={() => handleFieldFocus(field.id)}
+          >
+            <View
+              style={[
+                styles.input,
+                activeField === field.id && styles.activeInput,
+              ]}
+            >
+              <Text style={styles.inputText}>
+                {field.value}
+                {activeField === field.id && caretVisible && (
+                  <Text style={styles.caret}>|</Text>
+                )}
+              </Text>
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
       <CustomKeyboard onKeyPress={handleKeyPress} />
@@ -398,7 +385,7 @@ const BuyScreen = () => {
         SixDGD={SixDGD}
         setSixDGD={setSixDGD}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 

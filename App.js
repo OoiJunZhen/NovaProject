@@ -9,6 +9,8 @@ import MainScreen from "./MainScreen";
 import BuyScreen from "./BuyScreen";
 import OrderScreen from "./OrderScreen";
 import ReBuyScreen from "./ReBuyScreen";
+import AllOrderScreen from "./AllOrderScreen";
+import ReprintScreen from "./ReprintScreen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // ErrorBoundary Component for fallback UI
@@ -74,6 +76,16 @@ const App = () => {
             name="ReBuyScreen" 
             component={ReBuyScreen} 
             options = {{ title: "Buy"}}
+            />
+            <Stack.Screen 
+            name="AllOrderScreen" 
+            component={AllOrderScreen} 
+            options = {{ title: "All Order"}}
+            />
+            <Stack.Screen 
+            name="ReprintScreen" 
+            component={ReprintScreen} 
+            options = {{ title: "Reprint"}}
             />
           </Stack.Navigator>
         </NavigationContainer>
