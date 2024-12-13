@@ -5,6 +5,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 const MainPage = ({ navigation }) => {
   const menuItems = [
     { title: 'BUY', icon: 'shopping-cart', color: '#4CAF50', action: () => navigation.navigate('BuyScreen') },
+    { title: 'AllOrder', icon: 'book', color: '#F16133', action: () => navigation.navigate('AllOrderScreen') },
+    { title: 'Reprint', icon: 'mail', color: '#E5587C', action: () => navigation.navigate('ReprintScreen') },
     // Add other menu items here as needed
   ];
 
