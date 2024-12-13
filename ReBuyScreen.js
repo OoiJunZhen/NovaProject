@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigation } from "@react-navigation/native";
-
+import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -41,17 +40,34 @@ const CustomKeyboard = ({ onKeyPress }) => {
   );
 };
 
-// Main BuyScreen Component
-const BuyScreen = () => {
-  const [textFields, setTextFields] = useState([{ id: 1, value: "" }]);
+const ReBuyScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  // Retrieve parameters passed from OrderScreen
+  const {
+    userInput, // Ensure userInput defaults to an empty array if not passed
+    ticketNumber: initialTicketNumber,
+    ticketNumber2: initialTicketNumber2,
+    SixDGD: initialSixDGD,
+  } = route.params || {};
+
+  const [textFields, setTextFields] = useState(
+    userInput.length > 0
+      ? userInput.map((item, index) => ({
+          id: item.id || index + 1,
+          value: item.value || "",
+        }))
+      : [{ id: 1, value: "" }]
+  );
   const [activeField, setActiveField] = useState(1);
   const [caretVisible, setCaretVisible] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [ticketNumber, setTicketNumber] = useState("");
-  const [ticketNumber2, setTicketNumber2] = useState("");
-  const [SixDGD, setSixDGD] = useState("");
-
-  const navigation = useNavigation();
+  const [ticketNumber, setTicketNumber] = useState(initialTicketNumber || "");
+  const [ticketNumber2, setTicketNumber2] = useState(
+    initialTicketNumber2 || ""
+  );
+  const [SixDGD, setSixDGD] = useState(initialSixDGD || "");
 
   // Toggle caret visibility
   useEffect(() => {
@@ -107,7 +123,6 @@ const BuyScreen = () => {
       user_inputs: textFields,
       formatted_data: formattedData,
       total_price: totalPrice,
-      details: details,
     };
   
     try {
@@ -136,7 +151,6 @@ const BuyScreen = () => {
       alert("Error: " + error.message);
     }
   };
-  
 
   const resetBuyScreen = () => {
     // Reset all fields to initial state
@@ -208,7 +222,6 @@ const BuyScreen = () => {
       .filter(Boolean)
       .join("-");
 
-  // Utility to map characters using mapping
   const mapCharacters = (input, mapping) =>
     input
       .split("")
@@ -349,29 +362,25 @@ const BuyScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView style={styles.inputContainer}>
         {textFields.map((field) => (
-          <TouchableOpacity
-            key={field.id}
-            onPress={() => handleFieldFocus(field.id)}
-          >
-            <View
+          <View key={field.id} style={styles.fieldWrapper}>
+            <TextInput
               style={[
                 styles.input,
                 activeField === field.id && styles.activeInput,
               ]}
-            >
-              <Text style={styles.inputText}>
-                {field.value}
-                {activeField === field.id && caretVisible && (
-                  <Text style={styles.caret}>|</Text>
-                )}
-              </Text>
-            </View>
-          </TouchableOpacity>
+              value={field.value}
+              onChangeText={(text) => handleTextChange(text, field.id)}
+              onFocus={() => handleFieldFocus(field.id)}
+              showSoftInputOnFocus={false} // Disable default keyboard to use CustomKeyboard
+            />
+          </View>
         ))}
       </ScrollView>
+
+      {/* Replace this with your actual custom keyboard component */}
       <CustomKeyboard onKeyPress={handleKeyPress} />
 
       <ModalComponent
@@ -385,7 +394,7 @@ const BuyScreen = () => {
         SixDGD={SixDGD}
         setSixDGD={setSixDGD}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -529,4 +538,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BuyScreen;
+export default ReBuyScreen;
