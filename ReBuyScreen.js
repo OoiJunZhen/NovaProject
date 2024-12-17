@@ -11,6 +11,7 @@ import {
   Button,
   KeyboardAvoidingView,
 } from "react-native";
+import CONSTANTS from './constants';
 
 // Custom Keyboard Component
 const CustomKeyboard = ({ onKeyPress }) => {
@@ -113,9 +114,9 @@ const ReBuyScreen = () => {
   const handleSubmit = async () => {
     const formattedData = formatData();
     const totalPrice = calculateTotalPrice();
-  
+
     const details = generateOutputMessage(formattedData, totalPrice);
-  
+
     const payload = {
       ticket_number: ticketNumber,
       ticket_number2: ticketNumber2,
@@ -124,16 +125,19 @@ const ReBuyScreen = () => {
       formatted_data: formattedData,
       total_price: totalPrice,
     };
-  
+
     try {
-      const response = await fetch("http://192.168.30.117/NovaProject/save_order.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-  
+      const response = await fetch(
+        CONSTANTS.SERVER_URL + "/NovaProject/save_order.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
       const result = await response.json();
-  
+
       if (result.success) {
         alert("Data stored successfully!");
         navigation.navigate("OrderScreen", {
@@ -362,25 +366,29 @@ const ReBuyScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior="padding">
+    <View style={styles.container}>
       <ScrollView style={styles.inputContainer}>
         {textFields.map((field) => (
-          <View key={field.id} style={styles.fieldWrapper}>
-            <TextInput
+          <TouchableOpacity
+            key={field.id}
+            onPress={() => handleFieldFocus(field.id)}
+          >
+            <View
               style={[
                 styles.input,
                 activeField === field.id && styles.activeInput,
               ]}
-              value={field.value}
-              onChangeText={(text) => handleTextChange(text, field.id)}
-              onFocus={() => handleFieldFocus(field.id)}
-              showSoftInputOnFocus={false} // Disable default keyboard to use CustomKeyboard
-            />
-          </View>
+            >
+              <Text style={styles.inputText}>
+                {field.value}
+                {activeField === field.id && caretVisible && (
+                  <Text style={styles.caret}>|</Text>
+                )}
+              </Text>
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
-
-      {/* Replace this with your actual custom keyboard component */}
       <CustomKeyboard onKeyPress={handleKeyPress} />
 
       <ModalComponent
@@ -394,7 +402,7 @@ const ReBuyScreen = () => {
         SixDGD={SixDGD}
         setSixDGD={setSixDGD}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 

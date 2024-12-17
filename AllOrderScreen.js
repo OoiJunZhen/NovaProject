@@ -10,6 +10,7 @@ import {
   Share,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import CONSTANTS from './constants';
 
 const AllOrderScreen = () => {
   const [orders, setOrders] = useState([]);
@@ -19,7 +20,7 @@ const AllOrderScreen = () => {
   // Fetch orders from the database
   const fetchOrders = async () => {
     try {
-      const response = await fetch("http://192.168.30.117/NovaProject/fetch_orders.php");
+      const response = await fetch(CONSTANTS.SERVER_URL + "/NovaProject/fetch_orders.php");
       const result = await response.json();
 
       if (result.success) {

@@ -12,6 +12,7 @@ import {
   Button,
   KeyboardAvoidingView,
 } from "react-native";
+import CONSTANTS from "./constants";
 
 // Custom Keyboard Component
 const CustomKeyboard = ({ onKeyPress }) => {
@@ -97,9 +98,9 @@ const BuyScreen = () => {
   const handleSubmit = async () => {
     const formattedData = formatData();
     const totalPrice = calculateTotalPrice();
-  
+
     const details = generateOutputMessage(formattedData, totalPrice);
-  
+
     const payload = {
       ticket_number: ticketNumber,
       ticket_number2: ticketNumber2,
@@ -109,16 +110,19 @@ const BuyScreen = () => {
       total_price: totalPrice,
       details: details,
     };
-  
+
     try {
-      const response = await fetch("http://192.168.30.117/NovaProject/save_order.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-  
+      const response = await fetch(
+        CONSTANTS.SERVER_URL + "/NovaProject/save_order.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
       const result = await response.json();
-  
+
       if (result.success) {
         alert("Data stored successfully!");
         navigation.navigate("OrderScreen", {
@@ -136,7 +140,6 @@ const BuyScreen = () => {
       alert("Error: " + error.message);
     }
   };
-  
 
   const resetBuyScreen = () => {
     // Reset all fields to initial state
@@ -151,17 +154,22 @@ const BuyScreen = () => {
   const formatData = () => {
     const mapping = { 1: "M", 2: "K", 3: "T", 4: "S", 8: "G", 9: "E" };
 
-    return textFields
+    const nonEmptyFields = textFields.filter(
+      (field) => field.value !== null && field.value.trim() !== ""
+    );
+
+    return nonEmptyFields
       .map((field) => {
         const input = field.value;
 
-        if (input.includes("#")) {
+        if (input.startsWith("**")) {
           const [base, ...parts] = input.split("#");
-          console.log("Base:", base);
-          console.log("Parts:", parts);
+          console.log("Base in **:", base);
+          console.log("Parts in **:", parts);
 
           const cleanedBase = base.replace("**", "");
           const cleanedBase1 = base.replace("*", "");
+          const cleanedBase2 = base.replace("#", "");
           console.log("Cleaned Base:", cleanedBase);
           console.log("Cleaned Base1:", cleanedBase1);
 
@@ -170,160 +178,244 @@ const BuyScreen = () => {
             console.log("Formatted Parts for '**':", formattedParts);
             return `ib(${cleanedBase}) ${formattedParts}`;
           }
+        } else if (input.startsWith("*")) {
+          const [base, ...parts] = input.split("#");
+          console.log("Base:", base);
+          console.log("Parts:", parts);
+
+          const cleanedBase = base.replace("**", "");
+          const cleanedBase1 = base.replace("*", "");
+          const cleanedBase2 = base.replace("#", "");
+          console.log("Cleaned Base:", cleanedBase);
+          console.log("Cleaned Base1:", cleanedBase1);
 
           if (base.startsWith("*")) {
             const formattedParts = mapSuffixes(parts, ["B", "S"]);
             console.log("Formatted Parts for '*':", formattedParts);
             return `box(${cleanedBase1}) ${formattedParts}`;
           }
-
-          if (cleanedBase.length === 4) {
-            // 4-digit validation
-            const formattedParts = input.includes("**#")
-              ? mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])
-              : mapSuffixes(parts, ["B", "S", "A", "C"]);
-            console.log("Formatted Parts for 4-digit base:", formattedParts);
-            return `${cleanedBase} ${formattedParts}`;
-          } else if (cleanedBase.length === 3) {
-            // 3-digit validation
-            const formattedParts = input.includes("**#")
-              ? mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])
-              : mapSuffixes(parts, ["A", "C"]);
-            console.log("Formatted Parts for 3-digit base:", formattedParts);
-            return `${cleanedBase} ${formattedParts}`;
+        } else if (input.startsWith("#")) {
+        
+          // Find the position of the second '#'
+          const index = input.indexOf("#", 1);
+        
+          let base, parts;
+        
+          // Extract base and parts
+          if (index !== -1) {
+            base = input.substring(0, index); // Base includes the first '#'
+            parts = input.substring(index + 1).split("#"); // Remaining parts split by '#'
+          } else {
+            base = input; // If no other '#', base is the entire input
+            parts = [];
           }
-        } else if (!input.includes("#") || !input.includes("**#")) {
-          const mappedCharacters = mapCharacters(input, mapping);
-          console.log("Mapped Characters:", mappedCharacters);
-          return mappedCharacters; // Default character mapping
+        
+          console.log("Base:", base);
+          console.log("Parts:", parts);
+        
+          // Clean the base by removing the first '#'
+          const cleanedBase = base.replace("#", "");
+          console.log("Cleaned Base:", cleanedBase);
+        
+          // Check conditions for formatting
+          if (cleanedBase.length === 3) {
+            const suffixes = input.includes("**#") 
+              ? ["SA", "SB", "SC", "SD", "SE"] 
+              : ["B", "S"];
+        
+            const formattedParts = mapSuffixes(parts, suffixes);
+        
+            // Return formatted result
+            return `0${cleanedBase}-9${cleanedBase} ${formattedParts}`;
+          }
+        }
+         else {
+          if (input.includes("#")) {
+            const [base, ...parts] = input.split("#");
+            console.log("Base:", base);
+            console.log("Parts:", parts);
+
+            const cleanedBase = base.replace("**", "");
+            const cleanedBase1 = base.replace("*", "");
+            const cleanedBase2 = base.replace("#", "");
+            console.log("Cleaned Base:", cleanedBase);
+            console.log("Cleaned Base1:", cleanedBase1);
+
+            if (cleanedBase.length === 4) {
+              // 4-digit validation
+              const formattedParts = input.includes("**#")
+                ? mapSuffixes(parts, ["4A", "4B", "4C", "4D", "4E"])
+                : mapSuffixes(parts, ["B", "S", "A", "C"]);
+              console.log("Formatted Parts for 4-digit base:", formattedParts);
+              return `${cleanedBase} ${formattedParts}`;
+            } else if (cleanedBase.length === 3) {
+              // 3-digit validation
+              const formattedParts = input.includes("**#")
+                ? mapSuffixes(parts, ["A", "QB", "QC", "QD", "QE"])
+                : mapSuffixes(parts, ["A", "C"]);
+              console.log("Formatted Parts for 3-digit base:", formattedParts);
+              return `${cleanedBase} ${formattedParts}`;
+            }
+          } else if (!input.includes("#") || !input.includes("**#")) {
+            const mappedCharacters = mapCharacters(input, mapping);
+            console.log("Mapped Characters:", mappedCharacters);
+            return mappedCharacters;
+          }
         }
       })
       .join("\n");
   };
 
-  // Utility to map suffixes to parts
   const mapSuffixes = (values, labels) =>
     values
       .map((value, index) => (labels[index] ? `${labels[index]}${value}` : ""))
       .filter(Boolean)
       .join("-");
 
-  // Utility to map characters using mapping
   const mapCharacters = (input, mapping) =>
     input
       .split("")
       .map((char) => mapping[char] || char)
       .join("");
 
-  const calculateTotalPrice = () => {
-    let totalPrice = 0;
-    let currentGroup = [];
-    let multiplier = 1;
-
-    const groups = [];
-
-    // Helper function to calculate factorial
-    const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
-
-    // Helper function to calculate permutations
-    const calculatePermutations = (numString) => {
-      const freq = {};
-      for (const char of numString) {
-        freq[char] = (freq[char] || 0) + 1; // Count frequency of each digit
-      }
-
-      const totalDigits = numString.length; // Total digits
-      const denominator = Object.values(freq).reduce(
-        (acc, count) => acc * factorial(count),
-        1
-      );
-      return factorial(totalDigits) / denominator;
-    };
-
-    // Helper function to calculate the number of digits in the multiplier
-    const getMultiplierLength = (num) => num.toString().length;
-
-    // Group inputs and calculate their respective sums and totals
-    textFields.forEach((field) => {
-      const input = field.value;
-
-      if (!input.includes("#")) {
-        // If it's a line without `#`, it's a multiplier and marks the start of a new group
+      const calculateTotalPrice = () => {
+        let totalPrice = 0;
+        let currentGroup = [];
+        let multiplier = 1;
+      
+        const groups = [];
+      
+        // Helper function to calculate factorial
+        const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+      
+        // Helper function to calculate permutations
+        const calculatePermutations = (numString) => {
+          const freq = {};
+          for (const char of numString) {
+            freq[char] = (freq[char] || 0) + 1; // Count frequency of each digit
+          }
+      
+          const totalDigits = numString.length; // Total digits
+          const denominator = Object.values(freq).reduce(
+            (acc, count) => acc * factorial(count),
+            1
+          );
+          return factorial(totalDigits) / denominator;
+        };
+      
+        // Helper function to calculate the number of digits in the multiplier
+        const getMultiplierLength = (num) => num.toString().length;
+      
+        // Function to process inputs starting with #
+        const processSpecialInput = (input) => {
+          const parts = input.split("#").slice(1);
+          return {
+            value: parts.slice(1).reduce((sum, num) => sum + parseInt(num || 0, 10) * 10, 0),
+          };
+        };
+      
+        // Group inputs and calculate their respective sums and totals
+        textFields.forEach((field) => {
+          const input = field.value;
+      
+          if (!input.includes("#")) {
+            // If it's a line without `#`, it's a multiplier and marks the start of a new group
+            if (currentGroup.length > 0) {
+              // Process the previous group before starting a new one
+              const sum = currentGroup.reduce((sum, item) => {
+                if (item.startsWith("#")) {
+                  const { value } = processSpecialInput(item);
+                  return sum + value;
+                }
+      
+                const [base, ...parts] = item.split("#"); // Split input into base and parts
+                const baseMultiplier =
+                  base.startsWith("*") && !base.startsWith("**")
+                    ? calculatePermutations(base.replace("*", ""))
+                    : 1; // Use permutation multiplier for `*` prefixed base
+                const partsSum = parts.reduce(
+                  (acc, num) => acc + parseInt(num || 0, 10),
+                  0
+                );
+                return sum + partsSum * baseMultiplier;
+              }, 0);
+      
+              const groupMultiplier = getMultiplierLength(multiplier); // Get length of multiplier
+              const groupTotal = sum * groupMultiplier;
+              totalPrice += groupTotal;
+      
+              groups.push({
+                group: [multiplier.toString(), ...currentGroup],
+                sum,
+                total: groupTotal,
+              });
+            }
+      
+            // Start a new group
+            currentGroup = [];
+            multiplier = parseInt(input, 10) || 1;
+          } else {
+            // If it contains `#`, add it to the current group
+            currentGroup.push(input);
+          }
+        });
+      
+        // Process the last group
         if (currentGroup.length > 0) {
-          // Process the previous group before starting a new one
           const sum = currentGroup.reduce((sum, item) => {
-            const [base, ...parts] = item.split("#"); // Split input into base and parts
+            if (item.startsWith("#")) {
+              const { value } = processSpecialInput(item);
+              return sum + value;
+            }
+      
+            const [base, ...parts] = item.split("#");
             const baseMultiplier =
               base.startsWith("*") && !base.startsWith("**")
                 ? calculatePermutations(base.replace("*", ""))
-                : 1; // Use permutation multiplier for `*` prefixed base
+                : 1;
             const partsSum = parts.reduce(
               (acc, num) => acc + parseInt(num || 0, 10),
               0
             );
             return sum + partsSum * baseMultiplier;
           }, 0);
-
-          const groupMultiplier = getMultiplierLength(multiplier); // Get length of multiplier
+      
+          const groupMultiplier = getMultiplierLength(multiplier);
           const groupTotal = sum * groupMultiplier;
           totalPrice += groupTotal;
-
+      
           groups.push({
             group: [multiplier.toString(), ...currentGroup],
             sum,
             total: groupTotal,
           });
         }
-
-        // Start a new group
-        currentGroup = [];
-        multiplier = parseInt(input, 10) || 1;
-      } else {
-        // If it contains `#`, add it to the current group
-        currentGroup.push(input);
-      }
-    });
-
-    // Process the last group
-    if (currentGroup.length > 0) {
-      const sum = currentGroup.reduce((sum, item) => {
-        const [base, ...parts] = item.split("#"); // Split input into base and parts
-        const baseMultiplier =
-          base.startsWith("*") && !base.startsWith("**")
-            ? calculatePermutations(base.replace("*", ""))
-            : 1; // Use permutation multiplier for `*` prefixed base
-        const partsSum = parts.reduce(
-          (acc, num) => acc + parseInt(num || 0, 10),
-          0
-        );
-        return sum + partsSum * baseMultiplier;
-      }, 0);
-
-      const groupMultiplier = getMultiplierLength(multiplier); // Get length of multiplier
-      const groupTotal = sum * groupMultiplier;
-      totalPrice += groupTotal;
-
-      groups.push({
-        group: [multiplier.toString(), ...currentGroup],
-        sum,
-        total: groupTotal,
-      });
-    }
-
-    // Log the grouped results for clarity (can be removed in production)
-    groups.forEach(({ group, sum, total }) => {
-      console.log(
-        `Group: ${JSON.stringify(group)}, Sum: ${sum}, Total: ${total}`
-      );
-    });
-
-    // Log the total price
-    console.log(`Total Price: ${totalPrice}`);
-
-    return totalPrice;
-  };
+      
+        // Log the grouped results for clarity (can be removed in production)
+        groups.forEach(({ group, sum, total }) => {
+          console.log(
+            `Group: ${JSON.stringify(group)}, Sum: ${sum}, Total: ${total}`
+          );
+        });
+      
+        // Log the total price
+        console.log(`Total Price: ${totalPrice}`);
+      
+        return totalPrice;
+      };
+      
 
   const generateOutputMessage = (formattedData, totalPrice) => {
+    // Filter out textFields with empty or null values
+    const nonEmptyFields = textFields.filter(
+      (field) => field.value !== null && field.value.trim() !== ""
+    );
+
+    // If all textFields are empty, avoid formatting message
+    if (nonEmptyFields.length === 0) {
+      return "No valid input data provided.";
+    }
+
     const currentDate = new Date();
     const formattedDate = `${currentDate
       .getDate()
@@ -341,8 +433,10 @@ const BuyScreen = () => {
       .toString()
       .padStart(2, "0")}`;
 
+    // Build the final message using non-empty fields
     return (
-      `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n${formattedData}\n` +
+      `(PP)\nB${formattedDate}\nSG0003#${ticketNumber}\n*BSAC4A 1*1\n30/11\n` +
+      `${formattedData}\n` + // This uses the filtered textFields data
       `T = ${totalPrice}\nNT = ${totalPrice}\n${ticketNumber2} PP\n` +
       `Free 6D GD\n30/11\n${SixDGD}\nSila semak resit.\nBayaran ikut resit.`
     );
